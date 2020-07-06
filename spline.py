@@ -33,6 +33,14 @@ class Spline(object):
     def __init__(self, t, u, k):
         super(Spline, self).__init__()
 
+        n = len(t) - self.k - 1
+
+        if (k < 0):
+            raise ValueError('Negative degree is not possible')
+        if n < self.k + 1:
+            raise ValueError("Need at least %d knots for degree %d" %
+                             (2*k + 2, k))
+
         self.t = np.asarray(t)
         self.u = np.asarray(u)
         self.k = k
@@ -66,7 +74,7 @@ class Spline(object):
 
         Notes
         -----
-        B-spline basis elements are defined via:
+        BSpline are defined via:
 
         .. math::
 
@@ -95,7 +103,7 @@ class Spline(object):
                 deltal = x - self.t[index-j+r]
                 term = bspl[r] / (deltar + deltal)
                 # Indicates an invalid Bspline, but prepares right term for next iteration
-                if ((index - (j+1)) + r) <= -1:
+                if ((index - (j+1)) + r) == -1:
                     bspl[r] = 0
                 else:
                     bspl[r] = saved + deltar * term
@@ -131,11 +139,11 @@ def make_spline(points, p_type=0, k_type=0, k=3):
         BSpline object.
     """
     if (len(points[0]) <= k) or (len(points[1]) <= k):
-        raise TypeError('n > k must hold')
+        raise ValueError('n > k must hold')
     if (len(points[0]) != len(points[1])):
-        raise TypeError('Number of coordinates for points are unequal')
+        raise ValueError('Number of coordinates for points are unequal')
     if (k < 0):
-        raise TypeError('Negative degree is not possible')
+        raise ValueError('Negative degree is not possible')
     x = np.asarray(points[0])
     y = np.asarray(points[1])
 
