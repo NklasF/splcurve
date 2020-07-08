@@ -35,15 +35,26 @@ class Spline(object):
 
         n = len(t) - self.k - 1
 
-        if (k < 0):
+        self.t = np.asarray(t)
+        self.u = np.asarray(u)
+        self.k = k
+
+        if (self.k < 0):
             raise ValueError('Negative degree is not possible')
         if n < self.k + 1:
             raise ValueError("Need at least %d knots for degree %d" %
                              (2*k + 2, k))
-
-        self.t = np.asarray(t)
-        self.u = np.asarray(u)
-        self.k = k
+        if self.t.ndim != 1:
+            raise ValueError("Knot vector must be one-dimensional.")
+        if (np.diff(self.t) < 0).any():
+            raise ValueError("Knots must be in a non-decreasing order.")
+        if not np.isfinite(self.t).all():
+            raise ValueError("Knots should not have nans or infs.")
+        # Not yet implemented
+        # if self.c.ndim < 1:
+        #     raise ValueError("Coefficients must be at least 1-dimensional.")
+        # if self.c.shape[0] < n:
+        #     raise ValueError("Knots, coefficients and degree are inconsistent.")
 
     @property
     def tuk(self):
@@ -60,7 +71,7 @@ class Spline(object):
         return self
 
     def calc_bspl(self, x):
-        """Compute non-zero BSplines at given point.
+        """Compute BSplines at given point.
 
         Parameters
         ----------
@@ -86,37 +97,32 @@ class Spline(object):
         ----------
         .. [1] Carl de Boor, A practical guide to splines, Springer, 2001.
         """
-        if ((x < self.t[0]) or (x > self.t[len(self.t)-1])):
-            raise TypeError('Extrapolation is not supported')
-        index = _helpers.search_index(self.t, x)
-        # Initialize bspl with k+1 entries for intermediate values, it may get sliced later
+        start = self.k
+        end = len(self.t)-self.k-1
+        if ((x < self.t[start]) or (x > self.t[end])):
+            raise TypeError('Point x outside of the base interval')
+        # Search on t[start:end-1] because of special case x == t[end]
+        index = _helpers.binary_search(self.t, x, start, end-1)
+        # Initialize bspl with k+1 entries for intermediate values
         bspl = np.zeros(self.k+1)
 
+        # BSpline for degree 0
         bspl[0] = 1
+        # Main Loop
         for j in range(self.k):
+            # First entry has no north-west predecessor
             saved = 0
-            # Indicates to skip some iterations if necessary
-            start = max(j - index, 0)
-            stop = min(len(self.t) - index - 1, j+1)
-            for r in range(start, stop):
+            # Loop for actual calculation of entries
+            for r in range(j+1):
                 deltar = self.t[index+r+1] - x
                 deltal = x - self.t[index-j+r]
                 term = bspl[r] / (deltar + deltal)
-                # Indicates an invalid Bspline, but prepares right term for next iteration
-                if ((index - (j+1)) + r) == -1:
-                    bspl[r] = 0
-                else:
-                    bspl[r] = saved + deltar * term
+                # Internal neighbouring entries have common terms (saved)
+                bspl[r] = saved + deltar * term
                 saved = deltal * term
-            # Indicates an invalid Bspline and sets it to 0
-            if index > (len(self.t) - (j+1) - 2):
-                bspl[j+1] = 0
-            else:
-                bspl[j+1] = saved
-        # Slice bspl to contain only valid Bsplines
-        beg = max(self.k - index, 0)
-        end = min(len(self.t) - index - 1, self.k+1)
-        return bspl[beg:end]
+            # Last entry has no south-west predecessor
+            bspl[j+1] = saved
+        return bspl
 
 
 def make_spline(points, p_type=0, k_type=0, k=3):
