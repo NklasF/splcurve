@@ -5,7 +5,7 @@ from . import _parametrization
 from . import _knots
 from . import _helpers
 import numpy as np
-import math
+import math as m
 
 
 class Spline(object):
@@ -30,13 +30,13 @@ class Spline(object):
         Degree
     """
 
-    def __init__(self, t, u, k):
+    def __init__(self, t, c, k):
         super(Spline, self).__init__()
 
         n = len(t) - self.k - 1
 
         self.t = np.asarray(t)
-        self.u = np.asarray(u)
+        self.c = np.asarray(c)
         self.k = k
 
         if (self.k < 0):
@@ -50,66 +50,56 @@ class Spline(object):
             raise ValueError("Knots must be in a non-decreasing order.")
         if not np.isfinite(self.t).all():
             raise ValueError("Knots should not have nans or infs.")
-        # Not yet implemented
-        # if self.c.ndim < 1:
-        #     raise ValueError("Coefficients must be at least 1-dimensional.")
-        # if self.c.shape[0] < n:
-        #     raise ValueError("Knots, coefficients and degree are inconsistent.")
+        if self.c.ndim < 1:
+            raise ValueError("Coefficients must be at least 1-dimensional.")
+        if self.c.shape[0] < n:
+            raise ValueError(
+                "Knots, coefficients and degree are inconsistent.")
 
     @property
-    def tuk(self):
-        return self.t, self.u, self.k
+    def tck(self):
+        return self.t, self.c, self.k
 
     @classmethod
-    def construct_fast(cls, t, u, k):
+    def construct_fast(cls, t, c, k):
         """Construct a spline without making checks.
         Accepts same parameters as the regular constructor. Input arrays
         `t` and `u` must be of correct shape and dtype.
         """
         self = object.__new__(cls)
-        self.t, self.u, self.k = t, u, k
+        self.t, self.c, self.k = t, c, k
         return self
 
-    def calc_bspl(self, x):
-        """Compute BSplines at given point.
+    def eval_bspl(self, x, m=0):
+        """Compute BSplines at given point for the mth derivative.
 
         Parameters
         ----------
         x : float
             The point at which the BSplines are to be evaluated
+        m : int
+            Indicates the mth derivative
 
         Returns
         ----------
-        bspl : ndarray, shape (k+1,)
-            Non-zero BSplines at given point
-
-        Notes
-        -----
-        BSpline are defined via:
-
-        .. math::
-
-            B_{i, 0}(x) = 1, \textrm{if $t_i \le x < t_{i+1}$, otherwise $0$,}
-            B_{i, k}(x) = \frac{x - t_i}{t_{i+k} - t_i} B_{i, k-1}(x)
-                    + \frac{t_{i+k+1} - x}{t_{i+k+1} - t_{i+1}} B_{i+1, k-1}(x)
+        bspl : ndarray, shape ((k-m)+1,)
+            BSplines at given point
 
         References
         ----------
         .. [1] Carl de Boor, A practical guide to splines, Springer, 2001.
         """
-        start = self.k
-        end = len(self.t)-self.k-1
-        if ((x < self.t[start]) or (x > self.t[end])):
-            raise TypeError('Point x outside of the base interval')
-        # Search on t[start:end-1] because of special case x == t[end]
-        index = _helpers.binary_search(self.t, x, start, end-1)
+        if (m > self.k):
+            raise ValueError(
+                'Negative degree after differentiation is not possible')
+        index = self._search_index(x)
         # Initialize bspl with k+1 entries for intermediate values
-        bspl = np.zeros(self.k+1)
+        bspl = np.zeros((self.k-m)+1)
 
         # BSpline for degree 0
         bspl[0] = 1
         # Main Loop
-        for j in range(self.k):
+        for j in range(self.k-m):
             # First entry has no north-west predecessor
             saved = 0
             # Loop for actual calculation of entries
@@ -122,7 +112,56 @@ class Spline(object):
                 saved = deltal * term
             # Last entry has no south-west predecessor
             bspl[j+1] = saved
+        # bspl_i,k-m, for i=index, index-1, index-2, ... ,index-k
         return bspl
+
+    def eval_diff(self, x, m=1):
+        # TODO: Momentan nur für m=1 definiert. Dynamischen Ansatz von eval_bspl implementieren.
+        """Compute the coefficients of BSplines at given point for the mth derivative.
+
+        Parameters
+        ----------
+        x : float
+            The point at which the coefficients of BSplines are to be evaluated
+        m : int
+            Indicates the mth derivative
+
+        Returns
+        ----------
+        coef : ndarray, shape ((k-m)+1,)
+            coefficients of BSplines at given point
+
+        References
+        ----------
+        .. [1] Carl de Boor, A practical guide to splines, Springer, 2001.
+        """
+        if (m > self.k):
+            raise ValueError(
+                'Negative degree after differentiation is not possible')
+        index = self._search_index(x)
+        coef = [self.k * (self.c[j+index-self.k+1] - self.c[j+index-self.k]) /
+                (self.t[j+index+1] - self.t[j+index-self.k+1]) for j in range(self.k)]
+        return coef
+
+    def _search_index(self, x):
+        """Find the index for a point within a knot span [t_index,t_index+1) of the knot vector.
+
+        Parameters
+        ----------
+        x : float
+            The point within a knot span on the base interval
+
+        Returns
+        ----------
+        index : int
+            index within the knot vector for the given point x
+        """
+        start = self.k
+        end = len(self.t)-self.k-1
+        if ((x < self.t[start]) or (x > self.t[end])):
+            raise ValueError('Point x outside of the base interval')
+        # Search on t[start:end-1] because of special case x == t[end]
+        return _helpers.binary_search(self.t, x, start, end-1)
 
 
 def make_spline(points, p_type=0, k_type=0, k=3):
@@ -155,8 +194,9 @@ def make_spline(points, p_type=0, k_type=0, k=3):
 
     u = _generate_param(x, y, p_type)
     t = _generate_knots(u, k, k_type)
+    c = np.zeros(len(t) - k - 1)
 
-    return Spline.construct_fast(t, u, k)
+    return Spline.construct_fast(t, c, k)
 
 
 def _generate_param(x, y, p_type=0):
