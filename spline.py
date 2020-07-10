@@ -13,10 +13,10 @@ class Spline(object):
 
     Parameters
     ----------
-    t : array_like, (n+3+1,)
+    t : array_like, (n+k+1,)
         Knots
-    u : array_like, (n,)
-        Parameters
+    c : array_like, (n, 2)
+        Coefficients
     k : int
         Degree
 
@@ -24,8 +24,8 @@ class Spline(object):
     ----------
     t : ndarray
         Knot vector
-    u : ndarray
-        Parameter vector
+    c : ndarray
+        Coefficients vector
     k : int
         Degree
     """
@@ -93,7 +93,7 @@ class Spline(object):
             raise ValueError(
                 'Negative degree after differentiation is not possible')
         index = self._search_index(x)
-        # Initialize bspl with k+1 entries for intermediate values
+        # Initialize bspl for intermediate values
         bspl = np.zeros((self.k-m)+1)
 
         # BSpline for degree 0
@@ -112,12 +112,11 @@ class Spline(object):
                 saved = deltal * term
             # Last entry has no south-west predecessor
             bspl[j+1] = saved
-        # bspl_i,k-m, for i=index, index-1, index-2, ... ,index-k
+        # bspl_i,k-m, for i=index, index-1, index-2, ... ,index-(k-m)
         return bspl
 
-    def eval_diff(self, x, m=1):
-        # TODO: Momentan nur für m=1 definiert. Dynamischen Ansatz von eval_bspl implementieren.
-        """Compute the coefficients of BSplines at given point for the mth derivative.
+    def eval_coef(self, x, m=0):
+        """Evaluate the coefficients of BSplines at given point for up to the mth derivative.
 
         Parameters
         ----------
@@ -128,7 +127,7 @@ class Spline(object):
 
         Returns
         ----------
-        coef : ndarray, shape ((k-m)+1,)
+        coef : ndarray, shape ((k-m)+1, 2)
             coefficients of BSplines at given point
 
         References
@@ -139,9 +138,16 @@ class Spline(object):
             raise ValueError(
                 'Negative degree after differentiation is not possible')
         index = self._search_index(x)
-        coef = [self.k * (self.c[j+index-self.k+1] - self.c[j+index-self.k]) /
-                (self.t[j+index+1] - self.t[j+index-self.k+1]) for j in range(self.k)]
-        return coef
+        # Initialize coef to the coefficients of Bsplines
+        coef = self.c[index-self.k:index+1]
+        # Main Loop
+        for i in range(0, m):
+            # Loop for actual calculation of coefficients
+            for j in range(self.k-i):
+                coef[j] = (self.k-i) * (coef[j+1] - coef[j]) / \
+                    (self.t[j+index+1-i] - self.t[j+index-self.k+1])
+        # coef^(m)_j, for j=index, index-1, index-2, ... ,index-(k-m)
+        return coef[:self.k+1-m]
 
     def _search_index(self, x):
         """Find the index for a point within a knot span [t_index,t_index+1) of the knot vector.
