@@ -15,7 +15,7 @@ class Spline(object):
     ----------
     t : array_like, (n+k+1,)
         Knots
-    c : array_like, (n, 2)
+    c : array_like, (n, ...)
         Coefficients
     k : int
         Degree
@@ -71,19 +71,19 @@ class Spline(object):
         return self
 
     def eval_bspl(self, x, m=0):
-        """Compute BSplines at given point for the mth derivative.
+        """Compute BSplines at given value for the mth derivative.
 
         Parameters
         ----------
         x : float
-            The point at which the BSplines are to be evaluated
+            The value at which the BSplines are to be evaluated
         m : int
             Indicates the mth derivative
 
         Returns
         ----------
         bspl : ndarray, shape ((k-m)+1,)
-            BSplines at given point
+            BSplines at given value
 
         References
         ----------
@@ -92,10 +92,10 @@ class Spline(object):
         if (m > self.k):
             raise ValueError(
                 'Negative degree after differentiation is not possible')
+        # Search for knot span and return index
         index = self._search_index(x)
         # Initialize bspl for intermediate values
         bspl = np.zeros((self.k-m)+1)
-
         # BSpline for degree 0
         bspl[0] = 1
         # Main Loop
@@ -116,19 +116,19 @@ class Spline(object):
         return bspl
 
     def eval_coef(self, x, m=0):
-        """Evaluate the coefficients of BSplines at given point for up to the mth derivative.
+        """Evaluate the coefficients of BSplines at given value for up to the mth derivative.
 
         Parameters
         ----------
         x : float
-            The point at which the coefficients of BSplines are to be evaluated
+            The value at which the coefficients of BSplines are to be evaluated
         m : int
             Indicates the mth derivative
 
         Returns
         ----------
-        coef : ndarray, shape ((k-m)+1, 2)
-            coefficients of BSplines at given point
+        coef : ndarray, shape ((k-m)+1, ...)
+            coefficients of BSplines at given value
 
         References
         ----------
@@ -137,35 +137,80 @@ class Spline(object):
         if (m > self.k):
             raise ValueError(
                 'Negative degree after differentiation is not possible')
+        # Search for knot span and return index
         index = self._search_index(x)
         # Initialize coef to the coefficients of Bsplines
-        coef = self.c[index-self.k:index+1]
+        coef = np.copy(self.c[index-self.k:index+1])
         # Main Loop
-        for i in range(0, m):
+        for i in range(m):
             # Loop for actual calculation of coefficients
             for j in range(self.k-i):
                 coef[j] = (self.k-i) * (coef[j+1] - coef[j]) / \
                     (self.t[j+index+1-i] - self.t[j+index-self.k+1])
         # coef^(m)_j, for j=index, index-1, index-2, ... ,index-(k-m)
-        return coef[:self.k+1-m]
+        return coef[:self.k-m+1]
 
-    def _search_index(self, x):
-        """Find the index for a point within a knot span [t_index,t_index+1) of the knot vector.
+    def de_Boor(self, x, m=0):
+        """Evaluate the spline function at given value for up to the mth derivative.
 
         Parameters
         ----------
         x : float
-            The point within a knot span on the base interval
+            The value at which the coefficients of BSplines are to be evaluated
+        m : int
+            Indicates the mth derivative
+
+        Returns
+        ----------
+        point : ndarray, shape (1, ...)
+            Point on spline curve at given value
+
+        References
+        ----------
+        .. [1] Carl de Boor, A practical guide to splines, Springer, 2001.
+        """
+        if (m > self.k):
+            raise ValueError(
+                'Negative degree after differentiation is not possible')
+        # Search for knot span and return index
+        index = self._search_index(x)
+        # Initialize points to the coefficients of Bsplines according to m
+        if (m == 0):
+            points = np.copy(self.c[index-self.k:index+1])
+        else:
+            points = self.eval_coef(x, m)
+        # Multiplicity of x, in case it is an internal knot
+        s = np.count_nonzero(self.t == x)
+        # Main Loop
+        for i in range(self.k - s):
+            # Loop for actual calculation of points
+            for j in range(self.k - s - i):
+                # Left index for denominator of alpha
+                left = j + index + 1
+                # Right index for denominator of alpha
+                right = j + index - self.k + i + 1
+                alpha = (x - self.t[right]) / (self.t[left] - self.t[right])
+                points[j] = (1 - alpha) * points[j] + alpha * points[j+1]
+        return points[0]
+
+    def _search_index(self, x):
+        """Find the index for a value within a knot span [t_index,t_index+1) of the knot vector.
+
+        Parameters
+        ----------
+        x : float
+            The value within a knot span on the base interval
 
         Returns
         ----------
         index : int
-            index within the knot vector for the given point x
+            index within the knot vector for the given value x
         """
+        # Limits of base interval
         start = self.k
         end = len(self.t)-self.k-1
         if ((x < self.t[start]) or (x > self.t[end])):
-            raise ValueError('Point x outside of the base interval')
+            raise ValueError('Value x outside of the base interval')
         # Search on t[start:end-1] because of special case x == t[end]
         return _helpers.binary_search(self.t, x, start, end-1)
 
