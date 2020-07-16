@@ -181,14 +181,16 @@ class Spline(object):
             points = self.eval_coef(x, m)
         # Multiplicity of x, in case it is an internal knot
         s = np.count_nonzero(self.t == x)
+        # Degree of spline curve after differentiation
+        p = self.k - m
         # Main Loop
-        for i in range(self.k - s):
+        for i in range(p - s):
             # Loop for actual calculation of points
-            for j in range(self.k - s - i):
+            for j in range(p - s - i):
                 # Left index for denominator of alpha
                 left = j + index + 1
                 # Right index for denominator of alpha
-                right = j + index - self.k + i + 1
+                right = j + index - p + i + 1
                 alpha = (x - self.t[right]) / (self.t[left] - self.t[right])
                 points[j] = (1 - alpha) * points[j] + alpha * points[j+1]
         return points[0]
