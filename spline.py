@@ -4,6 +4,7 @@
 from . import _parametrization
 from . import _knots
 from . import _helpers
+from . import _algebra
 import numpy as np
 import math as m
 
@@ -64,21 +65,21 @@ class Spline(object):
     def construct_fast(cls, t, c, k):
         """Construct a spline without making checks.
         Accepts same parameters as the regular constructor. Input arrays
-        `t` and `u` must be of correct shape and dtype.
+        t and u must be of correct shape and dtype.
         """
         self = object.__new__(cls)
         self.t, self.c, self.k = t, c, k
         return self
 
     def eval_bspl(self, x, m=0):
-        """Compute BSplines at given value for the mth derivative.
+        """Compute BSplines at given value for the m-th derivative.
 
         Parameters
         ----------
         x : float
             The value at which the BSplines are to be evaluated
         m : int
-            Indicates the mth derivative
+            Indicates the m-th derivative
 
         Returns
         ----------
@@ -116,14 +117,14 @@ class Spline(object):
         return bspl
 
     def eval_coef(self, x, m=0):
-        """Evaluate the coefficients of BSplines at given value for up to the mth derivative.
+        """Evaluate the coefficients of BSplines at given value for up to the m-th derivative.
 
         Parameters
         ----------
         x : float
             The value at which the coefficients of BSplines are to be evaluated
         m : int
-            Indicates the mth derivative
+            Indicates the m-th derivative
 
         Returns
         ----------
@@ -151,14 +152,14 @@ class Spline(object):
         return coef[:self.k-m+1]
 
     def de_Boor(self, x, m=0):
-        """Evaluate the spline function at given value for up to the mth derivative.
+        """Evaluate the spline function at given value for up to the m-th derivative.
 
         Parameters
         ----------
         x : float
             The value at which the coefficients of BSplines are to be evaluated
         m : int
-            Indicates the mth derivative
+            Indicates the m-th derivative
 
         Returns
         ----------

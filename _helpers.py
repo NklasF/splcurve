@@ -10,8 +10,8 @@ import math
 
 
 def binary_search(t, x, start, end):
-    """Find the index `i` of `t` with :math:`t[i] <= x <= t[i+1]`.
-    Under the assumption that `t` is nondecreasing :math:`t[j] <= t[j+1]`.
+    """Find the index i of t with t[i] <= x <= t[i+1].
+    Under the assumption that t is nondecreasing t[j] <= t[j+1].
     """
     mid = math.floor((start + end) / 2)
     if ((start - end) == 0) or ((t[mid] <= x) and (x < t[mid+1])):
