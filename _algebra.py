@@ -13,27 +13,29 @@ def LU_solve(b, LU):
     """Finds a solution to the linear system Ax=b
     with A factorized into LU.
     """
-    if (len(LU[0]) != len(LU[1])):
+    rhs = np.asarray(b)
+    mat = np.asarray(LU)
+    if (mat.shape[0] != mat.shape[1]):
         raise ValueError('Matrix must be square!')
-    if (len(LU[0]) != len(b)):
+    if (mat.shape[1] != rhs.shape[0]):
         raise ValueError('Matrix and Right-Side must be of same dimension!')
-    n = len(b)
+    size = rhs.shape
 
-    # Solving Ly=b
-    y = np.zeros(n)
-    for i in range(n):
+    # Solving Ly=rhs
+    y = np.zeros(size)
+    for i in range(size[0]):
         sum = 0
         for k in range(i):
-            sum += LU[i, k]*y[k]
-        y[i] = b[i] - sum
+            sum += mat[i, k]*y[k]
+        y[i] = rhs[i] - sum
 
     # Solving Ux=y
-    x = np.zeros(n)
-    for i in range(n-1, -1, -1):
+    x = np.zeros(size)
+    for i in range(size[0]-1, -1, -1):
         sum = 0
-        for k in range(i+1, n):
-            sum += LU[i, k] * x[k]
-        x[i] = (y[i] - sum) / LU[i, i]
+        for k in range(i+1, size[0]):
+            sum += mat[i, k] * x[k]
+        x[i] = (y[i] - sum) / mat[i, i]
     return x
 
 
@@ -43,22 +45,23 @@ def LU_fac(A):
     U is an lower-triangular matrix.
     LU=L+U-I
     """
-    if (len(A[0]) != len(A[1])):
+    mat = np.asarray(A)
+    if (mat.shape[0] != mat.shape[1]):
         raise ValueError('Matrix must be square!')
-    n = len(A[0])
+    n = len(mat[0])
     LU = np.zeros((n, n))
-    # Factorization of A
+    # Factorization of mat
     for i in range(n):
         # Calculate ith row
         for j in range(i, n):
             sum = 0.0
             for k in range(i):
                 sum += LU[i, k]*LU[k, j]
-            LU[i, j] = A[i, j]-sum
+            LU[i, j] = mat[i, j]-sum
         # Calculate ith column
         for j in range(i+1, n):
             sum = 0.0
             for k in range(i):
                 sum += LU[j, k]*LU[k, i]
-            LU[j, i] = (A[j, i]-sum)/LU[i, i]
+            LU[j, i] = (mat[j, i]-sum)/LU[i, i]
     return LU

@@ -42,18 +42,18 @@ class Spline(object):
 
         if (self.k < 0):
             raise ValueError('Negative degree is not possible')
-        if n < self.k + 1:
+        if (n < self.k + 1):
             raise ValueError("Need at least %d knots for degree %d" %
                              (2*k + 2, k))
-        if self.t.ndim != 1:
+        if (self.t.ndim != 1):
             raise ValueError("Knot vector must be one-dimensional.")
         if (np.diff(self.t) < 0).any():
             raise ValueError("Knots must be in a non-decreasing order.")
-        if not np.isfinite(self.t).all():
+        if (not np.isfinite(self.t).all()):
             raise ValueError("Knots should not have nans or infs.")
-        if self.c.ndim < 1:
+        if (self.c.ndim < 1):
             raise ValueError("Coefficients must be at least 1-dimensional.")
-        if self.c.shape[0] < n:
+        if (self.c.shape[0] < n):
             raise ValueError(
                 "Knots, coefficients and degree are inconsistent.")
 
@@ -78,7 +78,7 @@ class Spline(object):
         ----------
         x : float
             The value at which the BSplines are to be evaluated
-        m : int
+        m : int, optional
             Indicates the m-th derivative
 
         Returns
@@ -125,7 +125,7 @@ class Spline(object):
         ----------
         x : float
             The value at which the coefficients of BSplines are to be evaluated
-        m : int
+        m : int, optional
             Indicates the m-th derivative
 
         Returns
@@ -160,7 +160,7 @@ class Spline(object):
         ----------
         x : float
             The value at which the coefficients of BSplines are to be evaluated
-        m : int
+        m : int, optional
             Indicates the m-th derivative
 
         Returns
@@ -198,13 +198,15 @@ class Spline(object):
                 points[j] = (1 - alpha) * points[j] + alpha * points[j+1]
         return points[0]
 
-    def interpolate(self, d):
+    def interpolate(self, d, u):
         """Evaluate the control points fo an interpolating spline curve given a set of data points.
 
         Parameters
         ----------
         d : array_like, (n, ...)
             Data points
+        u : array_like (n, )
+            Parameter vector
 
         Returns
         ----------
@@ -215,7 +217,21 @@ class Spline(object):
         ----------
         [1] Carl de Boor, A practical guide to splines, Springer, 2001.
         """
-        return 1
+        param = np.asarray(u)
+        # Data point D_i on row i
+        dpoints = np.asarray(d)
+        n = len(self.t) - self.k - 1
+        if (param.ndim != 1):
+            raise ValueError("Parameter vector must be one-dimensional.")
+        if (len(param) != n):
+            raise ValueError("Need exactly n parameters.")
+        if (len(param) != dpoints.shape[0]):
+            raise ValueError("Need exactly as many data points as parameters.")
+        # Evaluate Collocation Matrix
+        colloc = self._colloc(param)
+        # Calculate Control Points
+        cpoints = _algebra.LU_solve(dpoints, _algebra.LU_fac(colloc))
+        return cpoints
 
     def _colloc(self, u):
         """Construct the collocation matrix according to the given parameter vector.
@@ -233,10 +249,10 @@ class Spline(object):
         param = np.asarray(u)
         # Define shape of collocation matrix
         n = len(self.t) - self.k - 1
-        if param.ndim != 1:
+        if (param.ndim != 1):
             raise ValueError("Parameter vector must be one-dimensional.")
-        if len(param) < n:
-            raise ValueError("Need at least n parameters.")
+        if (len(param) != n):
+            raise ValueError("Need at exactly n parameters.")
         colloc = np.zeros((n, n))
         for i in range(n):
             # Calculate B-splines
@@ -283,7 +299,7 @@ def make_spline(points, p_type=0, k_type=0, k=3):
 
     Returns
     ----------
-    spl :
+    spline :
         BSpline object.
     """
     if (len(points[0]) <= k) or (len(points[1]) <= k):
@@ -297,9 +313,9 @@ def make_spline(points, p_type=0, k_type=0, k=3):
 
     u = _generate_param(x, y, p_type)
     t = _generate_knots(u, k, k_type)
-    c = np.zeros(len(t) - k - 1)
-
-    return Spline.construct_fast(t, c, k)
+    spline = Spline.construct_fast(t, [], k)
+    spline.c = spline.interpolate(np.array([x, y]).T, u)
+    return spline
 
 
 def _generate_param(x, y, p_type=0):
