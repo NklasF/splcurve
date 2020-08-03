@@ -85,10 +85,12 @@ class Spline(object):
         ----------
         bspl : ndarray, shape ((k-m)+1,)
             BSplines at given value
+        index : int
+            index within the knot vector for the given value x
 
         References
         ----------
-        .. [1] Carl de Boor, A practical guide to splines, Springer, 2001.
+        [1] Carl de Boor, A practical guide to splines, Springer, 2001.
         """
         if (m > self.k):
             raise ValueError(
@@ -114,7 +116,7 @@ class Spline(object):
             # Last entry has no south-west predecessor
             bspl[j+1] = saved
         # bspl_i,k-m, for i=index, index-1, index-2, ... ,index-(k-m)
-        return bspl
+        return (bspl, index)
 
     def eval_coef(self, x, m=0):
         """Evaluate the coefficients of BSplines at given value for up to the m-th derivative.
@@ -133,7 +135,7 @@ class Spline(object):
 
         References
         ----------
-        .. [1] Carl de Boor, A practical guide to splines, Springer, 2001.
+        [1] Carl de Boor, A practical guide to splines, Springer, 2001.
         """
         if (m > self.k):
             raise ValueError(
@@ -168,7 +170,7 @@ class Spline(object):
 
         References
         ----------
-        .. [1] Carl de Boor, A practical guide to splines, Springer, 2001.
+        [1] Carl de Boor, A practical guide to splines, Springer, 2001.
         """
         if (m > self.k):
             raise ValueError(
@@ -196,6 +198,53 @@ class Spline(object):
                 points[j] = (1 - alpha) * points[j] + alpha * points[j+1]
         return points[0]
 
+    def interpolate(self, d):
+        """Evaluate the control points fo an interpolating spline curve given a set of data points.
+
+        Parameters
+        ----------
+        d : array_like, (n, ...)
+            Data points
+
+        Returns
+        ----------
+        points : ndarray, shape (n, ...)
+            Control points corresponding to the spline curve
+
+        References
+        ----------
+        [1] Carl de Boor, A practical guide to splines, Springer, 2001.
+        """
+        return 1
+
+    def _colloc(self, u):
+        """Construct the collocation matrix according to the given parameter vector.
+
+        Parameters
+        ----------
+        u : array_like (n, )
+            Parameter vector
+
+        Returns
+        ----------
+        colloc : ndarray, shape (n, n)
+            Collocation Matrix
+        """
+        param = np.asarray(u)
+        # Define shape of collocation matrix
+        n = len(self.t) - self.k - 1
+        if param.ndim != 1:
+            raise ValueError("Parameter vector must be one-dimensional.")
+        if len(param) < n:
+            raise ValueError("Need at least n parameters.")
+        colloc = np.zeros((n, n))
+        for i in range(n):
+            # Calculate B-splines
+            bspl = self.eval_bspl(param[i])
+            # Put B-splines into collocation matrix
+            colloc[i][bspl[1]-self.k:bspl[1]+1] = bspl[0]
+        return colloc
+
     def _search_index(self, x):
         """Find the index for a value within a knot span [t_index,t_index+1) of the knot vector.
 
@@ -209,7 +258,7 @@ class Spline(object):
         index : int
             index within the knot vector for the given value x
         """
-        # Limits of base interval
+        # Limits of the base interval
         start = self.k
         end = len(self.t)-self.k-1
         if ((x < self.t[start]) or (x > self.t[end])):
