@@ -199,7 +199,7 @@ class Spline(object):
         return points[0]
 
     def interpolate(self, d, u):
-        """Evaluate the control points fo an interpolating spline curve given a set of data points.
+        """Evaluate the control points fo an interpolating spline curve given a set of data points and parameters.
 
         Parameters
         ----------
@@ -330,8 +330,8 @@ def _generate_param(x, y, p_type=0):
     p_type : int, optional
         Determines the method for calculating the parametrization vector
 
-        * if p_type=0, identically spaced method
-        * if p_type=1, uniform spaced method
+        * if p_type=0, uniform spaced method
+        * if p_type=1, foley-nielson method
         * if p_type=2, chord length method
         * if p_type=3, centripetal method
 
@@ -341,6 +341,12 @@ def _generate_param(x, y, p_type=0):
     ----------
     u : ndarray, shape (n,)
         Parametrization vector
+
+    References
+    ----------
+    [1] Carl de Boor, A practical guide to splines, Springer, 2001.
+    [2] Eugene TY Lee, Choosing nodes in parametric curve interpolation, Elsevier, 1989.
+    [3] 
     """
     return _parametrization.calc_param(x, y, p_type)
 

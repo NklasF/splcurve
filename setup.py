@@ -8,7 +8,7 @@ setuptools.setup(
     version="0.0.1",
     author="Jan Niklas Franke",
     author_email="jan.franke@tu-drotmund.de",
-    description="Cubic B-Spline Curves in 2D",
+    description="B-Spline Curves in 2D",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/NklasF/splcurve",
