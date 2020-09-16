@@ -6,7 +6,7 @@ from . import _knots
 from . import _helpers
 from . import _algebra
 import numpy as np
-import math as m
+import math
 
 
 class Spline(object):
@@ -14,7 +14,7 @@ class Spline(object):
 
     Parameters
     ----------
-    t : array_like, (n+k+1,)
+    t : array_like, (n+k+1, ...)
         Knots
     c : array_like, (n, ...)
         Coefficients
@@ -63,13 +63,13 @@ class Spline(object):
         Parameters
         ----------
         x : array_like
-            points to evaluate the spline at
+            Points to evaluate the spline at
         m : int, optional
             Indicates the m-th derivative
 
         Returns
         ----------
-        y : array_like
+        y : array_like (n, ...)
             Shape is determined by replacing the interpolation axis
             in the coefficient array with the shape of `x`.
 
@@ -106,7 +106,7 @@ class Spline(object):
 
         Returns
         ----------
-        bspl : ndarray, shape ((k-m)+1,)
+        bspl : ndarray, shape ((k-m)+1, ...)
             BSplines at given value
         index : int
             index within the knot vector for the given value x
@@ -264,7 +264,7 @@ class Spline(object):
 
         Parameters
         ----------
-        u : array_like (n, )
+        u : array_like (n, ...)
             Parameter vector
 
         Returns
@@ -309,6 +309,57 @@ class Spline(object):
         return _helpers.binary_search(self.t, x, start, end-1)
 
 
+def haus_dist(points, spl, x):
+    """Calculate the Hausdorff distance between a given B-Spline Curve and
+    a Data Polygon defined by a set of given points.
+
+    Parameters
+    ----------
+    spl :
+        B-Spline object
+    points : array_like (2, n)
+        A list of sample vector arrays representing the data polygon in 2D
+    x : array_like
+        Points to evaluate the Hausdorff distance at
+
+    Returns
+    ----------
+    dist : float
+        Hausdorff distance between the curve and the data polygon.
+    """
+    # Data polygon described by a B-Spline of degree 1
+    data_poly = make_spline(points, k=1)
+
+    # Points on the curve
+    points1 = spl(x)
+    # Points on the data polygon
+    points2 = data_poly(x)
+
+    n = len(points1)
+
+    max12 = 0.0
+    max21 = 0.0
+
+    for i in range(n):
+        min12 = float("inf")
+        min21 = float("inf")
+        for j in range(n):
+            # Min Distance from the ith point on the curve (1) to the data polygon (2)
+            dist12 = math.sqrt(
+                (math.pow((points1[i][0]-points2[j][0]), 2) + math.pow((points1[i][1]-points2[j][1]), 2)))
+            min12 = dist12 if dist12 < min12 else min12
+            # Min Distance from the ith point on the data polygon (2) to the curve (1)
+            dist21 = math.sqrt(
+                (math.pow((points1[j][0]-points2[i][0]), 2) + math.pow((points1[j][1]-points2[i][1]), 2)))
+            min21 = dist21 if dist21 < min21 else min21
+        # Max of the Min Distances from curve (1) to data polygon (2)
+        max12 = min12 if min12 > max12 else max12
+        # Max of the Min Distances from data polygon (2) to curve (1)
+        max21 = min21 if min21 > max21 else max21
+    dist = max(max12, max21)
+    return dist
+
+
 def make_spline(points, p_type=0, k_type=0, k=3):
     """Compute a B-Spline Curve in 2D.
 
@@ -326,7 +377,7 @@ def make_spline(points, p_type=0, k_type=0, k=3):
     Returns
     ----------
     spline :
-        BSpline object.
+        B-Spline object.
     """
     if (len(points[0]) <= k) or (len(points[1]) <= k):
         raise ValueError('n > k must hold')
@@ -349,9 +400,9 @@ def _generate_param(x, y, p_type=0):
 
     Parameters
     ----------
-    x : array_like, shape (n,)
+    x : array_like, shape (n, ...)
         Abscissa
-    y : array_like, shape (n,)
+    y : array_like, shape (n, ...)
         Ordinate
     p_type : int, optional
         Determines the method for calculating the parametrization vector
@@ -365,7 +416,7 @@ def _generate_param(x, y, p_type=0):
 
     Returns
     ----------
-    u : ndarray, shape (n,)
+    u : ndarray, shape (n, ...)
         Parametrization vector
 
     References
@@ -382,7 +433,7 @@ def _generate_knots(u, k, k_type=0):
 
     Parameters
     ----------
-    u : array_like, shape (n,)
+    u : array_like, shape (n, ...)
         Parameters
     k : int
         Degree
@@ -396,7 +447,7 @@ def _generate_knots(u, k, k_type=0):
 
     Returns
     ----------
-    t : ndarray, shape (n+3+1,)
+    t : ndarray, shape (n+3+1, ...)
         Knot vector
     """
     return _knots.calc_knots(u, k, k_type)
