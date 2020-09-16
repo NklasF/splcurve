@@ -31,14 +31,16 @@ def param_foley(x, y):
             d2 = _helpers.nielson_metric(Q, [x[i+1], y[i+1]], [x[i+2], y[i+2]])
             d4 = _helpers.nielson_metric(Q, [x[i], y[i]], [x[i+2], y[i+2]])
             th1 = math.pi - \
-                np.arccos((math.sqrt(d1)+math.sqrt(d2)-math.sqrt(d4))/(2*d2*d1))
+                np.arccos((math.pow(d1, 2)+math.pow(d2, 2) -
+                           math.pow(d4, 2))/(2*d2*d1))
             theta1 = min(th1, math.pi/2)
             right = ((3*theta1*d2)/(2*(d1+d2)))
         if (i != 0):
             d0 = _helpers.nielson_metric(Q, [x[i-1], y[i-1]], [x[i], y[i]])
             d3 = _helpers.nielson_metric(Q, [x[i-1], y[i-1]], [x[i+1], y[i+1]])
             th0 = math.pi - \
-                np.arccos((math.sqrt(d0)+math.sqrt(d1)-math.sqrt(d3))/(2*d1*d0))
+                np.arccos((math.pow(d0, 2)+math.pow(d1, 2) -
+                           math.pow(d3, 2))/(2*d1*d0))
             theta0 = min(th0, math.pi/2)
             left = ((3*theta0*d0)/(2*(d0+d1)))
         u[i+1] = u[i] + d1 * \
@@ -51,8 +53,8 @@ def param_chord(x, y):
     u = np.zeros(n)
     chords = 0
     for i in range(1, n):
-        chords += math.sqrt(((x[i]-x[i-1])
-                             ** 2 + (y[i]-y[i-1])**2))
+        chords += math.sqrt((math.pow((x[i]-x[i-1]), 2)
+                             + math.pow((y[i]-y[i-1]), 2)))
         u[i] = chords
     return u/u[n-1]
 
@@ -62,8 +64,8 @@ def param_centri(x, y, a=0.5):
     u = np.zeros(n)
     chords = 0
     for i in range(1, n):
-        chords += math.pow(math.sqrt(((x[i]-x[i-1])
-                                      ** 2 + (y[i]-y[i-1])**2)), a)
+        chords += math.pow(math.sqrt((math.pow((x[i]-x[i-1]), 2)
+                                      + math.pow((y[i]-y[i-1]), 2))), a)
         u[i] = chords
     return u/u[n-1]
 

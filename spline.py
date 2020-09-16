@@ -34,11 +34,11 @@ class Spline(object):
     def __init__(self, t, c, k):
         super(Spline, self).__init__()
 
-        n = len(t) - self.k - 1
-
         self.t = np.asarray(t)
         self.c = np.asarray(c)
         self.k = k
+
+        n = len(t) - self.k - 1
 
         if (self.k < 0):
             raise ValueError('Negative degree is not possible')
@@ -56,6 +56,29 @@ class Spline(object):
         if (self.c.shape[0] < n):
             raise ValueError(
                 "Knots, coefficients and degree are inconsistent.")
+
+    def __call__(self, x, m=0):
+        """Evaluate a spline function for up to the m-th derivative.
+
+        Parameters
+        ----------
+        x : array_like
+            points to evaluate the spline at
+        m : int, optional
+            Indicates the m-th derivative
+
+        Returns
+        ----------
+        y : array_like
+            Shape is determined by replacing the interpolation axis
+            in the coefficient array with the shape of `x`.
+
+        """
+        x = np.asarray(x)
+        y = np.empty((len(x), self.c.shape[1]), dtype=self.c.dtype)
+        for i in range(len(x)):
+            y[i] = self.de_Boor(x[i], m)
+        return y
 
     @property
     def tck(self):
@@ -182,6 +205,9 @@ class Spline(object):
             points = np.copy(self.c[index-self.k:index+1])
         else:
             points = self.eval_coef(x, m)
+        # Special Case
+        if (x == self.t[len(self.t)-self.k-1]):
+            return points[self.k-m]
         # Multiplicity of x, in case it is an internal knot
         s = np.count_nonzero(self.t == x)
         # Degree of spline curve after differentiation
@@ -346,7 +372,7 @@ def _generate_param(x, y, p_type=0):
     ----------
     [1] Carl de Boor, A practical guide to splines, Springer, 2001.
     [2] Eugene TY Lee, Choosing nodes in parametric curve interpolation, Elsevier, 1989.
-    [3] 
+    [3] Thomas Foley and Gregory Nielson, Knot selection for parametric spline interpolation, Elsevier, 1989.
     """
     return _parametrization.calc_param(x, y, p_type)
 
