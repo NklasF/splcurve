@@ -7,10 +7,12 @@ from . import _helpers
 from . import _algebra
 import numpy as np
 import math
+import scipy.integrate
+import scipy.optimize
 
 
 class Spline(object):
-    """Definition of a B-Spline Curve in 2D.
+    """Definition of a B-Spline curve in 2D.
 
     Parameters
     ----------
@@ -69,12 +71,12 @@ class Spline(object):
 
         Returns
         ----------
-        y : array_like (n, ...)
+        y : ndarray, shape (n, ...)
             Shape is determined by replacing the interpolation axis
             in the coefficient array with the shape of `x`.
 
         """
-        x = np.asarray(x)
+        x = np.atleast_1d(x)
         y = np.empty((len(x), self.c.shape[1]), dtype=self.c.dtype)
         for i in range(len(x)):
             y[i] = self.de_Boor(x[i], m)
@@ -95,7 +97,7 @@ class Spline(object):
         return self
 
     def eval_bspl(self, x, m=0):
-        """Compute BSplines at given value for the m-th derivative.
+        """Compute B-Splines at given value for the m-th derivative.
 
         Parameters
         ----------
@@ -142,7 +144,7 @@ class Spline(object):
         return (bspl, index)
 
     def eval_coef(self, x, m=0):
-        """Evaluate the coefficients of BSplines at given value for up to the m-th derivative.
+        """Evaluate the coefficients of B-Splines at given value for up to the m-th derivative.
 
         Parameters
         ----------
@@ -310,15 +312,14 @@ class Spline(object):
 
 
 def haus_dist(points, spl, x):
-    """Calculate the Hausdorff distance between a given B-Spline Curve and
-    a Data Polygon defined by a set of given points.
+    """Calculate the Hausdorff distance between a given B-Spline curve and a data polygon defined by a set of given points.
 
     Parameters
     ----------
-    spl :
-        B-Spline object
     points : array_like (2, n)
         A list of sample vector arrays representing the data polygon in 2D
+    spl :
+        B-Spline object
     x : array_like
         Points to evaluate the Hausdorff distance at
 
@@ -360,8 +361,62 @@ def haus_dist(points, spl, x):
     return dist
 
 
+def eval_angles(partitions, spl):
+    """Calculate the approximated angles of the partitions of a given B-Spline curve. The partitions are defined by their chord lengths.
+
+    Parameters
+    ----------
+    partitions : array_like (n, 2)
+        A list of arrays with entries for angles and chord lengths representing the desired partitions of the curve
+    spl :
+        B-Spline object
+
+    Returns
+    ----------
+    results : ndarray
+        The approximated angles of the partitions of the curve.
+    """
+    parti = np.asarray(partitions)
+    if ((len(parti.shape) != 2) or (parti.shape[1] != 2)):
+        raise ValueError('Invalid information about partitions')
+    results = np.zeros(parti.shape[0])
+    # Length of a B-spline curve
+
+    def Len(x):
+        return math.sqrt(math.pow(spl(x, m=1).T[0], 2)+math.pow(spl(x, m=1).T[1], 2))
+
+    # Current chord
+    chords = 0
+    for i in range(len(parti)):
+        # Skip linear partitions
+        if (parti[i][0] == 0):
+            results[i] = 0
+        else:
+            # Start and end value within the domain of the length
+            start = chords
+            end = (chords+parti[i][1])
+            # Start and end value within the domain of the parameters
+            u_start = scipy.optimize.brentq(
+                lambda x: scipy.integrate.quad(Len, 0, x, limit=100)[0] - start, 0, 1)
+            u_end = scipy.optimize.brentq(
+                lambda x: scipy.integrate.quad(Len, 0, x, limit=100)[0] - end, 0, 1)
+            # Start point on the curve and its derivative
+            X1, Y1 = spl(u_start).T
+            dX1, dY1 = spl(u_start, m=1).T
+            # End point on the curve and its derivative
+            X2, Y2 = spl(u_end).T
+            dX2, dY2 = spl(u_end, m=1).T
+            # Intersection angle of the normal lines of the start and end point
+            alpha = np.degrees(np.arctan(
+                np.absolute(((dX1/dY1)-(dX2/dY2))/(1+(dX1/dY1)*(dX2/dY2)))))
+            results[i] = alpha
+        # Update chord
+        chords += parti[i][1]
+    return results
+
+
 def make_spline(points, p_type=0, k_type=0, k=3):
-    """Compute a B-Spline Curve in 2D.
+    """Compute a B-Spline curve in 2D.
 
     Parameters
     ----------
@@ -396,7 +451,7 @@ def make_spline(points, p_type=0, k_type=0, k=3):
 
 
 def _generate_param(x, y, p_type=0):
-    """Compute the parameters of a B-Spline Curve in 2D.
+    """Compute the parameters of a B-Spline curve in 2D.
 
     Parameters
     ----------
@@ -429,7 +484,7 @@ def _generate_param(x, y, p_type=0):
 
 
 def _generate_knots(u, k, k_type=0):
-    """Compute the knots of a B-Spline Curve in 2D.
+    """Compute the knots of a B-Spline curve in 2D.
 
     Parameters
     ----------

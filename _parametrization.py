@@ -30,17 +30,21 @@ def param_foley(x, y):
         if (i != (n-2)):
             d2 = _helpers.nielson_metric(Q, [x[i+1], y[i+1]], [x[i+2], y[i+2]])
             d4 = _helpers.nielson_metric(Q, [x[i], y[i]], [x[i+2], y[i+2]])
+            arc_in0 = (math.pow(d1, 2)+math.pow(d2, 2) -
+                       math.pow(d4, 2))/(2*d2*d1)
+            arc_in0 = arc_in0 if arc_in0 >= (-1) else -1
             th1 = math.pi - \
-                np.arccos((math.pow(d1, 2)+math.pow(d2, 2) -
-                           math.pow(d4, 2))/(2*d2*d1))
+                np.arccos(arc_in0)
             theta1 = min(th1, math.pi/2)
             right = ((3*theta1*d2)/(2*(d1+d2)))
         if (i != 0):
             d0 = _helpers.nielson_metric(Q, [x[i-1], y[i-1]], [x[i], y[i]])
             d3 = _helpers.nielson_metric(Q, [x[i-1], y[i-1]], [x[i+1], y[i+1]])
+            arc_in1 = (math.pow(d0, 2)+math.pow(d1, 2) -
+                       math.pow(d3, 2))/(2*d1*d0)
+            arc_in1 = arc_in1 if arc_in1 >= (-1) else -1
             th0 = math.pi - \
-                np.arccos((math.pow(d0, 2)+math.pow(d1, 2) -
-                           math.pow(d3, 2))/(2*d1*d0))
+                np.arccos(arc_in1)
             theta0 = min(th0, math.pi/2)
             left = ((3*theta0*d0)/(2*(d0+d1)))
         u[i+1] = u[i] + d1 * \

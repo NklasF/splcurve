@@ -9,31 +9,6 @@ import numpy as np
 import math as m
 
 
-def deBoorDerivative(k, x, t, c, p):
-    """
-    Evaluates S(x).
-
-    Args
-    ----
-    k: index of knot interval that contains x
-    x: position
-    t: array of knot positions, needs to be padded as described above
-    c: array of control points
-    p: degree of B-spline
-    """
-    q = [p * (c[j+k-p+1] - c[j+k-p]) / (t[j+k+1] - t[j+k-p+1])
-         for j in range(0, p)]
-
-    for r in range(1, p):
-        for j in range(p-1, r-1, -1):
-            right = j+1+k-r
-            left = j+k-(p-1)
-            alpha = (x - t[left]) / (t[right] - t[left])
-            q[j] = (1.0 - alpha) * q[j-1] + alpha * q[j]
-
-    return q[p-1]
-
-
 def test_spl_curve():
     x = [0, 5, 3, 4, 5, 6, 7, 8]
     y = [0, 2, 4, 0, 4, 5, 2, 3]
@@ -132,11 +107,3 @@ def test_call():
     print(spl_curve.c)
     points = spl_curve(u)
     print(points)
-
-
-if __name__ == '__main__':
-    # test_spl_curve()
-    # test_algebra()
-    # test_interpolation()
-    # test_parametrization()
-    test_call()
