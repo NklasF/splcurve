@@ -380,7 +380,7 @@ def eval_angles(partitions, spl):
     if ((len(parti.shape) != 2) or (parti.shape[1] != 2)):
         raise ValueError('Invalid information about partitions')
     results = np.zeros(parti.shape[0])
-    # Length of a B-spline curve
+    # Integrand of the length of a B-spline curve
 
     def Len(x):
         return math.sqrt(math.pow(spl(x, m=1).T[0], 2)+math.pow(spl(x, m=1).T[1], 2))
@@ -400,16 +400,13 @@ def eval_angles(partitions, spl):
                 lambda x: scipy.integrate.quad(Len, 0, x, limit=100)[0] - start, 0, 1)
             u_end = scipy.optimize.brentq(
                 lambda x: scipy.integrate.quad(Len, 0, x, limit=100)[0] - end, 0, 1)
-            # Start point on the curve and its derivative
-            X1, Y1 = spl(u_start).T
+            # Derivative of the start point on the curve
             dX1, dY1 = spl(u_start, m=1).T
-            # End point on the curve and its derivative
-            X2, Y2 = spl(u_end).T
+            # Derivative of the end point on the curve
             dX2, dY2 = spl(u_end, m=1).T
             # Intersection angle of the normal lines of the start and end point
-            alpha = np.degrees(np.arctan(
+            results[i] = np.degrees(np.arctan(
                 np.absolute(((dX1/dY1)-(dX2/dY2))/(1+(dX1/dY1)*(dX2/dY2)))))
-            results[i] = alpha
         # Update chord
         chords += parti[i][1]
     return results
