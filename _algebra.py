@@ -11,8 +11,7 @@ import math
 
 def LU_solve(b, LU):
     """Finds a solution to the linear system Ax=b
-    with A factorized into LU.
-    """
+    with A factorized into LU."""
     rhs = np.asarray(b)
     mat = np.asarray(LU)
     if (mat.shape[0] != mat.shape[1]):
@@ -43,8 +42,7 @@ def LU_fac(A):
     """Factorization of A according to A=LU without pivoting.
     L is an upper-triangular matrix.
     U is an lower-triangular matrix.
-    LU=L+U-I
-    """
+    LU=L+U-I"""
     mat = np.asarray(A)
     if (mat.shape[0] != mat.shape[1]):
         raise ValueError('Matrix must be square!')
